@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    ports:
+        - 5672:5672
+        - 5552:5552
+        - 5551:5551
+        - 15672:15672
+    volumes:
+      - .conf/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      - .conf/enabled_plugins:/etc/rabbitmq/enabled_plugins
+
