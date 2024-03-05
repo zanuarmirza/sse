@@ -5,7 +5,7 @@ use std::{
     time::Duration,
 };
 
-use actix_web::{get, middleware::Logger, web, App, HttpRequest, HttpServer, Responder};
+use actix_web::{get, middleware::Logger, web::{self, Data}, App, HttpRequest, HttpServer, Responder};
 use actix_web_lab::{respond::Html, sse};
 use futures_util::{stream, StreamExt};
 use rabbitmq_stream_client::Consumer;
@@ -29,44 +29,51 @@ async fn sync_status(req: HttpRequest, data: web::Data<AppState>) -> impl Respon
     // sent by the reconnecting browser after the _retry_ period
     tracing::debug!("lastEventId: {:?}", req.headers().get("Last-Event-ID"));
 
-    let mut consumer = data.consumer.lock().unwrap();
-    get_sync_status(consumer).await
+    get_sync_status(&data.consumer).await
 }
 
-// todo
-// make sure it can't be closed from client 
-async fn get_sync_status(mut consumer: MutexGuard<'_, Consumer>) -> impl Responder {
-    let delivery = consumer.next().await.unwrap().unwrap();
-    info!(
-        "Got message : {:?} with offset {}",
-        delivery
-            .message()
-            .data()
-            .map(|data| String::from_utf8(data.to_vec())),
-        delivery.offset()
-    );
-
-    let message = delivery
-        .message()
-        .data()
-        .map(|data| String::from_utf8(data.to_vec()))
-        .unwrap()
-        .unwrap();
-    // handle if message is empty
-
+async fn get_sync_status(consumer: &Arc<Mutex<Consumer>>) -> impl Responder {
     // handle message to stream
-    let message_stream = stream::unfold((false, message.into_bytes()), |(state,message)| async move {
-        let id = 1;
-        if state {
-            sleep(Duration::from_secs(3)).await;
-        }
-        let string_message = String::from_utf8(message.to_vec()).unwrap();
-        let data = sse::Data::new(string_message).event("countdown").id(id.to_string());
+    let message_stream = stream::unfold((false, consumer.to_owned()), |(state, mut consumer)| async move {
+        let next_item = consumer.lock().unwrap().next().await;
+        match next_item {
+            Some(delivery) => {
+                let delivery = delivery.unwrap();
+                info!(
+                    "Got message : {:?} with offset {}",
+                    delivery
+                        .message()
+                        .data()
+                        .map(|data| String::from_utf8(data.to_vec())),
+                    delivery.offset()
+                );
 
-        Some((Ok::<_, Infallible>(sse::Event::Data(data)), (true,message)))
+                let message = delivery
+                    .message()
+                    .data()
+                    .map(|data| String::from_utf8(data.to_vec()))
+                    .unwrap()
+                    .unwrap();
+
+                if state {
+                    sleep(Duration::from_secs(3)).await;
+                }
+                let data = sse::Data::new(message)
+                    .event("countdown")
+                    .id("sync");
+
+                Some((
+                    Ok::<_, Infallible>(sse::Event::Data(data)),
+                    (true, consumer),
+                ))
+            }
+            None => {
+                consumer.lock().unwrap().handle().close().await.unwrap();
+                None
+            }
+        }
     });
 
-    consumer.handle().close().await.unwrap();
     sse::Sse::from_stream(message_stream).with_retry_duration(Duration::from_secs(5))
 }
 
@@ -88,7 +95,7 @@ async fn main() -> io::Result<()> {
         App::new()
             .service(index)
             .service(sync_status)
-            .app_data(var_name)
+            .app_data(Data::new(var_name))
             .wrap(Logger::default())
     })
     .workers(2)
