@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use rabbitmq_stream_client::{
     error::StreamCreateError,
     types::{ByteCapacity, ResponseCode},
-    Environment, Producer, Dedup,
+    Dedup, Environment, Producer,
 };
 
 pub async fn setup() -> Result<Environment, Box<dyn std::error::Error>> {
