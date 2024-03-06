@@ -17,7 +17,7 @@ pub async fn setup() -> Result<Environment, Box<dyn std::error::Error>> {
     match environment
         .stream_creator()
         .max_length(ByteCapacity::GB(2))
-        .create("test")
+        .create("stream_a")
         .await
     {
         Ok(_) => Ok(environment),
@@ -30,13 +30,12 @@ pub async fn setup() -> Result<Environment, Box<dyn std::error::Error>> {
         },
     }
 }
-pub async fn get_producer(env_rb: &Environment) -> Arc<Mutex<Producer<Dedup>>> {
+pub async fn get_producer(env_rb: &Environment,id:i32) -> Producer<Dedup> {
     let producer = env_rb
         .producer()
-        .name("test_producer")
-        .build("test")
+        .name(format!("stream_b{}",id).as_str())
+        .build("stream_a")
         .await
         .expect("can't create producer");
-
-    Arc::new(Mutex::new(producer))
+    producer
 }

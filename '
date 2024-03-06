@@ -1,18 +1,22 @@
 use std::{
     convert::Infallible,
     io,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, MutexGuard},
     time::Duration,
 };
 
-use actix_web::{get, middleware::Logger, App, HttpRequest, HttpServer, Responder};
+use actix_web::{
+    get,
+    middleware::Logger,
+    web::{self, Data},
+    App, HttpRequest, HttpServer, Responder,
+};
 use actix_web_lab::{respond::Html, sse};
 use futures_util::{stream, StreamExt};
 use rabbitmq_stream_client::Consumer;
 use sse_rabbitmq::messaging_service;
 use tokio::time::sleep;
-use tracing::{info, Level};
-use tracing_subscriber::FmtSubscriber;
+use tracing::info;
 
 #[get("/")]
 async fn index() -> impl Responder {
@@ -29,9 +33,9 @@ async fn sync_status(req: HttpRequest) -> impl Responder {
     let env_rb = messaging_service::consumer::setup()
         .await
         .expect("can't create environment");
-    // rust get timestamp i64
-    let time_now = chrono::Utc::now().timestamp();
-    let c = messaging_service::consumer::get_consumer(&env_rb, time_now, 1).await;
+    // get timestamp i64
+    let time_now = messaging_service::consumer::get_time_now();
+    let c = messaging_service::consumer::get_consumer(&env_rb,time_now).await;
     get_sync_status(&c).await
 }
 
@@ -83,11 +87,6 @@ async fn get_sync_status(consumer: &Arc<Mutex<Consumer>>) -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> io::Result<()> {
-    let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::TRACE)
-        .finish();
-
-    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
     tracing::info!("starting HTTP server at http://localhost:8080");
     println!("log par, {}", std::thread::available_parallelism()?.get());

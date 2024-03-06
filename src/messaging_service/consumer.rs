@@ -17,7 +17,7 @@ pub async fn setup() -> Result<Environment, Box<dyn std::error::Error>> {
     match environment
         .stream_creator()
         .max_length(ByteCapacity::GB(2))
-        .create("test")
+        .create("stream_a")
         .await
     {
         Ok(_) => Ok(environment),
@@ -30,11 +30,14 @@ pub async fn setup() -> Result<Environment, Box<dyn std::error::Error>> {
         },
     }
 }
-pub async fn get_consumer(env_rb: &Environment) -> Arc<Mutex<Consumer>> {
+pub async fn get_consumer(env_rb: &Environment, time: i64,id:i32) -> Arc<Mutex<Consumer>> {
+
+    tracing::debug!("time: {:?}", time);
     let consumer = env_rb
         .consumer()
-        .offset(OffsetSpecification::First)
-        .build("test")
+        .offset(OffsetSpecification::Last)
+        .name(format!("stream_b{}", id).as_str())
+        .build("stream_a")
         .await
         .unwrap();
 
