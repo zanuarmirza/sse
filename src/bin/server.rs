@@ -2,7 +2,7 @@ use std::{sync::Mutex, time::Duration};
 
 use actix_web::{middleware::Logger, post, web, App, HttpServer, Responder};
 use rabbitmq_stream_client::{types::Message, Environment};
-use sse_rabbitmq::messaging_service::publisher;
+use sse_rabbitmq::messaging_service::rabbit_mq::publisher;
 use tokio::time::sleep;
 
 struct AppState {

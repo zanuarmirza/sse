@@ -9,7 +9,7 @@ use actix_web::{get, middleware::Logger, App, HttpRequest, HttpServer, Responder
 use actix_web_lab::{respond::Html, sse};
 use futures_util::{stream, StreamExt};
 use rabbitmq_stream_client::Consumer;
-use sse_rabbitmq::messaging_service;
+use sse_rabbitmq::messaging_service::rabbit_mq;
 use tokio::time::sleep;
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
@@ -26,12 +26,12 @@ async fn sync_status(req: HttpRequest) -> impl Responder {
     // sent by the reconnecting browser after the _retry_ period
     tracing::debug!("lastEventId: {:?}", req.headers().get("Last-Event-ID"));
 
-    let env_rb = messaging_service::consumer::setup()
+    let env_rb = rabbit_mq::consumer::setup()
         .await
         .expect("can't create environment");
     // rust get timestamp i64
     let time_now = chrono::Utc::now().timestamp();
-    let c = messaging_service::consumer::get_consumer(&env_rb, time_now, 1).await;
+    let c = rabbit_mq::consumer::get_consumer(&env_rb, time_now, 1).await;
     get_sync_status(c).await
 }
 

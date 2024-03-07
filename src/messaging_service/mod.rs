@@ -1,2 +1,1 @@
-pub mod publisher;
-pub mod consumer;
+pub mod rabbit_mq;
