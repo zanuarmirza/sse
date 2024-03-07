@@ -30,7 +30,7 @@ pub async fn setup() -> Result<Environment, Box<dyn std::error::Error>> {
         },
     }
 }
-pub async fn get_consumer(env_rb: &Environment, time: i64,id:i32) -> Arc<Mutex<Consumer>> {
+pub async fn get_consumer(env_rb: &Environment, time: i64,id:i32) -> Consumer {
 
     tracing::debug!("time: {:?}", time);
     let consumer = env_rb
@@ -41,5 +41,5 @@ pub async fn get_consumer(env_rb: &Environment, time: i64,id:i32) -> Arc<Mutex<C
         .await
         .unwrap();
 
-    Arc::new(Mutex::new(consumer))
+    consumer
 }

@@ -1,4 +1,4 @@
-use std::{sync::{Arc, Mutex}, time::Duration};
+use std::{sync::Mutex, time::Duration};
 
 use actix_web::{middleware::Logger, post, web, App, HttpServer, Responder};
 use rabbitmq_stream_client::{types::Message, Environment};
@@ -6,7 +6,7 @@ use sse_rabbitmq::messaging_service::publisher;
 use tokio::time::sleep;
 
 struct AppState {
-    env_rb: Arc<Mutex<Environment>>,
+    env_rb: Mutex<Environment>,
 }
 
 // need one endpoint to trigger publish message
@@ -14,15 +14,18 @@ struct AppState {
 #[post("/message")]
 async fn send_message(data: web::Data<AppState>) -> impl Responder {
     let env_rb = data.env_rb.lock().unwrap();
-    let mut producer = publisher::get_producer(&env_rb,1).await;
+    let mut producer = publisher::get_producer(&env_rb, 1).await;
     println!("sending message");
     //todo adding sleep
     sleep(Duration::from_secs(5)).await;
 
-
     let time_now = chrono::Utc::now().timestamp();
     producer
-        .send_with_confirm(Message::builder().body(format!("message{}", time_now)).build())
+        .send_with_confirm(
+            Message::builder()
+                .body(format!("message{}", time_now))
+                .build(),
+        )
         .await
         .expect("can't send message");
     "success"
@@ -39,7 +42,7 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         let var_name = AppState {
-            env_rb: Arc::new(Mutex::new(env_rb.clone())),
+            env_rb: Mutex::new(env_rb.clone()),
         };
         App::new()
             .service(send_message)

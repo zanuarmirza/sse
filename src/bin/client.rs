@@ -2,7 +2,7 @@ use std::{
     convert::Infallible,
     io,
     sync::{Arc, Mutex},
-    time::Duration,
+    time::Duration, borrow::BorrowMut,
 };
 
 use actix_web::{get, middleware::Logger, App, HttpRequest, HttpServer, Responder};
@@ -32,15 +32,15 @@ async fn sync_status(req: HttpRequest) -> impl Responder {
     // rust get timestamp i64
     let time_now = chrono::Utc::now().timestamp();
     let c = messaging_service::consumer::get_consumer(&env_rb, time_now, 1).await;
-    get_sync_status(&c).await
+    get_sync_status(c).await
 }
 
-async fn get_sync_status(consumer: &Arc<Mutex<Consumer>>) -> impl Responder {
+async fn get_sync_status(consumer: Consumer) -> impl Responder {
     // handle message to stream
     let message_stream = stream::unfold(
-        (false, consumer.to_owned()),
+        (false, consumer),
         |(state, mut consumer)| async move {
-            let next_item = consumer.lock().unwrap().next().await;
+            let next_item = consumer.next().await;
             match next_item {
                 Some(delivery) => {
                     let delivery = delivery.unwrap();
@@ -71,7 +71,7 @@ async fn get_sync_status(consumer: &Arc<Mutex<Consumer>>) -> impl Responder {
                     ))
                 }
                 None => {
-                    consumer.lock().unwrap().handle().close().await.unwrap();
+                    consumer.handle().close().await.unwrap();
                     None
                 }
             }
