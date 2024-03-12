@@ -3,7 +3,6 @@ use std::{convert::Infallible, io, sync::Mutex, time::Duration};
 use actix_web::{get, middleware::Logger, web, App, HttpRequest, HttpServer, Responder};
 use actix_web_lab::{respond::Html, sse};
 use async_nats::jetstream::{
-    consumer::{push::Config, Consumer, PushConsumer},
     Context,
 };
 use futures_util::{stream, StreamExt};
@@ -25,16 +24,11 @@ async fn other() -> impl Responder {
     Html(include_str!("../assets/sse-other.html").to_string())
 }
 
-/// Countdown event stream starting from 8.
 #[get("/sync/{id}")]
 async fn sync_status(req: HttpRequest, data: web::Data<AppState>) -> impl Responder {
     let id: i32 = req.match_info().query("id").parse().unwrap();
-    // note: a more production-ready implementation might want to use the lastEventId header
-    // sent by the reconnecting browser after the _retry_ period
     tracing::debug!("lastEventId: {:?}", req.headers().get("Last-Event-ID"));
-
     let stream = data.stream.lock().unwrap();
-
     get_sync_status(stream.clone(), id).await
 }
 
@@ -42,8 +36,7 @@ async fn get_sync_status(stream: Context, id: i32) -> impl Responder {
     println!("get sync status: {}", id);
     let consumer = consumer::get_consumer(
         &stream,
-        format!("stream_dummy_{}", id).as_str(),
-        format!("progress.{}", id).as_str(),
+        "progress",
         id.to_string().as_str(),
     )
     .await

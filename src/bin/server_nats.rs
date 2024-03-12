@@ -22,14 +22,6 @@ async fn send_message(info: web::Json<Message>, data: web::Data<AppState>) -> im
     println!("stream: {:?}", stream);
     sleep(Duration::from_secs(5)).await;
     stream
-        .get_or_create_stream(async_nats::jetstream::stream::Config {
-            name: format!("stream_dummy_{}", info.id).to_string(),
-            max_messages: 10_000,
-            ..Default::default()
-        })
-        .await
-        .unwrap();
-    stream
         .publish(format!("progress.{}", info.id), "Hello".to_string().into())
         .await
         .unwrap();
@@ -43,9 +35,7 @@ async fn main() -> std::io::Result<()> {
     tracing::info!("starting HTTP server at http://localhost:8081");
     println!("log par, {}", std::thread::available_parallelism()?.get());
 
-    let stream = conn_and_create_stream("stream_dummy")
-        .await
-        .expect("can't create stream");
+    let stream = conn_and_create_stream().await.expect("can't create stream");
 
     HttpServer::new(move || {
         let var_name = AppState {
