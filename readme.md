@@ -1,10 +1,10 @@
 # SSE POC
 
-# RabbitMq stream 
-## client
-`cargo build --bin sync-client`
-## server
-`cargo build --bin sync-server`
+# ~~RabbitMq stream~~
+## ~~client~~
+~~`cargo build --bin sync-client`~~
+## ~~server~~
+~~`cargo build --bin sync-server`~~
 
 
 # Nats jetstream
