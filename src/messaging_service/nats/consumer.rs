@@ -1,9 +1,10 @@
-use async_nats::jetstream::{self, consumer::PushConsumer};
+use async_nats::jetstream::{self, consumer::{PushConsumer, DeliverPolicy}};
 
 pub async fn get_consumer(
     jetstream: &jetstream::Context,
     stream_name: &str,
     subject: &str,
+    name:&str,
 ) -> Result<PushConsumer, Box<dyn std::error::Error>> {
     let stream = jetstream
         .get_or_create_stream(jetstream::stream::Config {
@@ -14,13 +15,16 @@ pub async fn get_consumer(
         })
         .await?;
     // jetstream.publish("events", "data".into()).await?;
+    let stream_name = format!("consumer-{}", name);
     let consumer = stream
         .get_or_create_consumer(
-            "consumerA",
+            stream_name.to_owned().as_str(),
             jetstream::consumer::push::Config {
-                name: Some("consumer1".to_string()),
+                name: Some(stream_name.to_owned()),
                 durable_name: None,
-                deliver_subject: "deliver-1".to_string(),
+                deliver_policy:DeliverPolicy::LastPerSubject,
+                filter_subject: format!("progress.{}", name),
+                deliver_subject: format!("deliver-{}", name),
                 ..Default::default()
             },
         )

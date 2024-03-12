@@ -28,7 +28,7 @@
       // Note that when the countdown stream finishes, the browser will restart it N seconds later
       // according to the `with_retry_duration` setting on `Sse`. Calling `EventSource.close()`
       // will stop the stream and retries.
-      let countdown_events = new EventSource('/sync/1')
+      let countdown_events = new EventSource('/sync/2')
       countdown_events.addEventListener('countdown', (event) => {
         addLine(event.data)
       })

@@ -2,7 +2,10 @@ use std::{convert::Infallible, io, sync::Mutex, time::Duration};
 
 use actix_web::{get, middleware::Logger, web, App, HttpRequest, HttpServer, Responder};
 use actix_web_lab::{respond::Html, sse};
-use async_nats::jetstream::{consumer::{push::Config, Consumer, PushConsumer}, Context};
+use async_nats::jetstream::{
+    consumer::{push::Config, Consumer, PushConsumer},
+    Context,
+};
 use futures_util::{stream, StreamExt};
 use sse_rabbitmq::messaging_service::nats::{conn, consumer};
 use tracing::Level;
@@ -17,22 +20,34 @@ async fn index() -> impl Responder {
     Html(include_str!("../assets/sse.html").to_string())
 }
 
+#[get("/stream-2")]
+async fn other() -> impl Responder {
+    Html(include_str!("../assets/sse-other.html").to_string())
+}
+
 /// Countdown event stream starting from 8.
-#[get("/sync")]
+#[get("/sync/{id}")]
 async fn sync_status(req: HttpRequest, data: web::Data<AppState>) -> impl Responder {
+    let id: i32 = req.match_info().query("id").parse().unwrap();
     // note: a more production-ready implementation might want to use the lastEventId header
     // sent by the reconnecting browser after the _retry_ period
     tracing::debug!("lastEventId: {:?}", req.headers().get("Last-Event-ID"));
 
     let stream = data.stream.lock().unwrap();
 
-    get_sync_status(stream.clone()).await
+    get_sync_status(stream.clone(), id).await
 }
 
-async fn get_sync_status(stream: Context) -> impl Responder {
-    let consumer = consumer::get_consumer(&stream, "stream_dummy", "events.b")
-        .await
-        .expect("can't create consumer");
+async fn get_sync_status(stream: Context, id: i32) -> impl Responder {
+    println!("get sync status: {}", id);
+    let consumer = consumer::get_consumer(
+        &stream,
+        format!("stream_dummy_{}", id).as_str(),
+        format!("progress.{}", id).as_str(),
+        id.to_string().as_str(),
+    )
+    .await
+    .expect("can't create consumer");
 
     println!("waiting message");
     let message_stream = stream::unfold((consumer), |(mut consumer)| async move {
@@ -72,6 +87,7 @@ async fn main() -> io::Result<()> {
         };
         App::new()
             .service(index)
+            .service(other)
             .service(sync_status)
             .app_data(web::Data::new(var_name))
             .wrap(Logger::default())

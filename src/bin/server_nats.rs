@@ -2,6 +2,7 @@ use std::{sync::Mutex, time::Duration};
 
 use actix_web::{middleware::Logger, post, web, App, HttpServer, Responder};
 use async_nats::jetstream::Context;
+use serde::Deserialize;
 use sse_rabbitmq::messaging_service::nats::conn::conn_and_create_stream;
 use tokio::time::sleep;
 
@@ -9,22 +10,27 @@ struct AppState {
     stream: Mutex<Context>,
 }
 
+#[derive(Deserialize)]
+struct Message {
+    id: i32,
+}
+
 #[post("/message")]
-async fn send_message(data: web::Data<AppState>) -> impl Responder {
+async fn send_message(info: web::Json<Message>, data: web::Data<AppState>) -> impl Responder {
     let stream = data.stream.lock().unwrap();
     println!("processing document in 2 seconds");
     println!("stream: {:?}", stream);
     sleep(Duration::from_secs(5)).await;
     stream
         .get_or_create_stream(async_nats::jetstream::stream::Config {
-            name: "stream_dummy".to_string(),
+            name: format!("stream_dummy_{}", info.id).to_string(),
             max_messages: 10_000,
             ..Default::default()
         })
         .await
         .unwrap();
     stream
-        .publish("events.b", "Hello".to_string().into())
+        .publish(format!("progress.{}", info.id), "Hello".to_string().into())
         .await
         .unwrap();
 
