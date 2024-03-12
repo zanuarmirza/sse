@@ -1,5 +1,3 @@
-use std::sync::{Arc, Mutex};
-
 use rabbitmq_stream_client::{
     error::StreamCreateError,
     types::{ByteCapacity, OffsetSpecification, ResponseCode},
@@ -30,16 +28,13 @@ pub async fn setup() -> Result<Environment, Box<dyn std::error::Error>> {
         },
     }
 }
-pub async fn get_consumer(env_rb: &Environment, time: i64,id:i32) -> Consumer {
-
+pub async fn get_consumer(env_rb: &Environment, time: i64, id: i32) -> Consumer {
     tracing::debug!("time: {:?}", time);
-    let consumer = env_rb
+    env_rb
         .consumer()
         .offset(OffsetSpecification::Last)
         .name(format!("stream_b{}", id).as_str())
         .build("stream_a")
         .await
-        .unwrap();
-
-    consumer
+        .unwrap()
 }

@@ -1,5 +1,3 @@
-use std::sync::{Arc, Mutex};
-
 use rabbitmq_stream_client::{
     error::StreamCreateError,
     types::{ByteCapacity, ResponseCode},
@@ -31,11 +29,10 @@ pub async fn setup() -> Result<Environment, Box<dyn std::error::Error>> {
     }
 }
 pub async fn get_producer(env_rb: &Environment,id:i32) -> Producer<Dedup> {
-    let producer = env_rb
+    env_rb
         .producer()
         .name(format!("stream_b{}",id).as_str())
         .build("stream_a")
         .await
-        .expect("can't create producer");
-    producer
+        .expect("can't create producer")
 }

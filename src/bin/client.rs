@@ -1,8 +1,7 @@
 use std::{
     convert::Infallible,
     io,
-    sync::{Arc, Mutex},
-    time::Duration, borrow::BorrowMut,
+    time::Duration,
 };
 
 use actix_web::{get, middleware::Logger, App, HttpRequest, HttpServer, Responder};
