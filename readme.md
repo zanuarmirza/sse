@@ -25,6 +25,6 @@ nats jetstream
 
 ## How to run sse nats jetstream
 - docker compose up
-- run server bin then client bin
+- run server bin then client bin, `cargo run --bin sync-server-nats` `cargo run --bin sync-client-nats`
 - open page at `/` and `/stream-2`
 - to publish a message, send POST to `/message`, payload `{id:number}`
